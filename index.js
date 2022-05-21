@@ -5,6 +5,7 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const nodemailer = require("nodemailer");
 
 app.use(cors());
 app.use(express.json());
@@ -23,6 +24,77 @@ const verifyJWT = (req, res, next) => {
   });
   next();
 };
+
+//*for sending email
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_SENDER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+function sendAppointmentEmail(booking) {
+  const { patient, patientName, treatment, date, slot } = booking;
+
+  const email = {
+    from: process.env.EMAIL_SENDER,
+    to: patient,
+    subject: `Your Appointment for ${treatment} is on ${date} at ${slot} is confirmed`,
+    text: `Your Appointment for ${treatment} is on ${date} at ${slot} is confirmed`,
+    html: `
+      <div>
+        <p> Hello ${patientName}, </p>
+        <h3>Your Appointment for ${treatment} is confirmed</h3>
+        <p>Looking forward to seeing you on ${date} at ${slot}</p>
+
+        <h3>Our Address</h3>
+        <p>Andor Killa Bandorban</p>
+        <a href="https://web.programming-hero.com/web-5/video/web-5-76-8-optional-set-email-after-appointment-confirmation">Unsubscribe</a>
+      </div>
+    `,
+  };
+
+  transporter.sendMail(email, function (err, info) {
+    if (err) {
+      console.log(err);
+    } else {
+      console.log("Email sent:" + info);
+    }
+  });
+}
+
+//*we just make a template for sending this email as an example. because we already test another.
+function sendPaymentConfirmationEmail(booking) {
+  const { patient, patientName, treatment, date, slot } = booking;
+
+  const email = {
+    from: process.env.EMAIL_SENDER,
+    to: patient,
+    subject: `We have received your payement for ${treatment} is on ${date} at ${slot} is confirmed`,
+    text: `We have received your payement for ${treatment} is on ${date} at ${slot} is confirmed`,
+    html: `
+      <div>
+        <p> Hello ${patientName}, </p>
+        <h3>Thank you for your payment</h3>
+        <p>Looking forward to seeing you on ${date} at ${slot}</p>
+
+        <h3>Our Address</h3>
+        <p>Andor Killa Bandorban</p>
+        <p>Bangladesh</p>
+        <a href="https://web.programming-hero.com/web-5/video/web-5-76-8-optional-set-email-after-appointment-confirmation">Unsubscribe</a>
+      </div>
+    `,
+  };
+
+  transporter.sendMail(email, function (err, info) {
+    if (err) {
+      console.log(err);
+    } else {
+      console.log("Email sent:" + info);
+    }
+  });
+}
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { cookie } = require("express/lib/response");
@@ -184,6 +256,8 @@ const run = async () => {
         return res.send({ success: false, booking: exists });
       }
       const result = await bookingCollection.insertOne(booking);
+      console.log("sending email");
+      sendAppointmentEmail(booking);
       res.send({ success: true, result });
     });
 
